@@ -1,0 +1,213 @@
+# =============================================================================
+# terraform.tfvars.example
+# DevOps Unlocked — terraform-module-architecture
+# Copy to terraform.tfvars and replace all ACTION REQUIRED values before use.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# FOUNDATION — Global Settings
+# -----------------------------------------------------------------------------
+
+# REQUIRED | The AWS region for the foundation layer
+# ACTION REQUIRED: Replace with your primary AWS region
+aws_region = "eu-west-1"
+
+# REQUIRED | AWS Account ID for the platform/foundation account
+# ACTION REQUIRED: Replace with your actual AWS account ID
+foundation_account_id = "123456789012"
+
+# REQUIRED | The name of the S3 bucket used for all Terraform remote state
+# Must already exist — created by scripts/bootstrap-team.sh
+# ACTION REQUIRED: Replace with your organisation's state bucket name
+terraform_state_bucket = "your-org-terraform-state-prod"
+
+# REQUIRED | The DynamoDB table name used for state locking
+# Must already exist — created by scripts/bootstrap-team.sh
+# ACTION REQUIRED: Replace with your DynamoDB lock table name
+terraform_lock_table = "terraform-state-locks"
+
+# REQUIRED | KMS Customer Managed Key ARN for Terraform state encryption
+# Must be pre-created in your foundation account
+# ACTION REQUIRED: Replace with your KMS CMK ARN
+terraform_state_kms_key_arn = "arn:aws:kms:eu-west-1:123456789012:key/mrk-REPLACE-ME"
+
+# -----------------------------------------------------------------------------
+# FOUNDATION — Networking
+# -----------------------------------------------------------------------------
+
+# REQUIRED | VPC CIDR block — coordinate with your IPAM team
+# ACTION REQUIRED: Replace with your organisation's assigned CIDR range
+vpc_cidr = "10.0.0.0/16"
+
+# REQUIRED | Private subnet CIDRs — one per AZ
+# ACTION REQUIRED: Replace with subnets within your VPC CIDR
+private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+
+# REQUIRED | Public subnet CIDRs — used for ALB only, not compute
+# ACTION REQUIRED: Replace with subnets within your VPC CIDR
+public_subnet_cidrs = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+
+# REQUIRED | Availability zones to deploy into
+# ACTION REQUIRED: Update to match your region's available AZs
+availability_zones = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
+
+# -----------------------------------------------------------------------------
+# FOUNDATION — KMS Keys
+# -----------------------------------------------------------------------------
+
+# REQUIRED | KMS CMK ARN for default resource encryption (EBS, S3, SSM)
+# ACTION REQUIRED: Replace with your pre-created CMK ARN
+default_kms_key_arn = "arn:aws:kms:eu-west-1:123456789012:key/mrk-REPLACE-ME"
+
+# REQUIRED | KMS CMK ARN specifically for RDS encryption
+# Can be the same as default_kms_key_arn or a separate key for audit purposes
+# ACTION REQUIRED: Replace with your RDS CMK ARN
+rds_kms_key_arn = "arn:aws:kms:eu-west-1:123456789012:key/mrk-REPLACE-ME"
+
+# REQUIRED | KMS CMK ARN for Kubernetes secrets encryption (EKS)
+# ACTION REQUIRED: Replace with your EKS secrets CMK ARN
+eks_secrets_kms_key_arn = "arn:aws:kms:eu-west-1:123456789012:key/mrk-REPLACE-ME"
+
+# -----------------------------------------------------------------------------
+# MODULES — Atomic: s3-secure
+# -----------------------------------------------------------------------------
+
+# REQUIRED | S3 bucket name — must be globally unique
+# Convention: {org}-{env}-{purpose}-{random-suffix}
+# ACTION REQUIRED: Replace with your bucket naming convention
+s3_bucket_name = "your-org-prod-REPLACE-ME-v1"
+
+# REQUIRED | Data classification for this bucket
+# Allowed values: public | internal | confidential | restricted
+# ACTION REQUIRED: Set appropriate classification for your data
+s3_data_classification = "confidential"
+
+# REQUIRED | Cost centre code for billing allocation
+# ACTION REQUIRED: Replace with your finance team's cost centre code
+s3_cost_centre = "CC-REPLACE-ME"
+
+# REQUIRED | Owning squad identifier
+# ACTION REQUIRED: Replace with your squad name (e.g., "compute", "data", "platform")
+s3_squad = "REPLACE-ME"
+
+# OPTIONAL | Enable S3 versioning (recommended for audit logs)
+# Default: true — disable only for transient/scratch buckets
+s3_versioning_enabled = true
+
+# OPTIONAL | S3 lifecycle rule — transition to IA after N days
+# Default: 90 — reduce for cost optimisation on high-volume buckets
+s3_transition_to_ia_days = 90
+
+# OPTIONAL | S3 lifecycle rule — expire objects after N days
+# Default: 2555 (7 years) — required for HIPAA audit log retention
+# Set to 0 to disable expiration
+s3_expiration_days = 2555
+
+# -----------------------------------------------------------------------------
+# MODULES — Atomic: eks-compliant
+# -----------------------------------------------------------------------------
+
+# REQUIRED | EKS cluster name
+# ACTION REQUIRED: Replace with your cluster name (e.g., "compute-prod-eks")
+eks_cluster_name = "REPLACE-ME-prod"
+
+# REQUIRED | Kubernetes version
+# ACTION REQUIRED: Use latest AWS-supported version (e.g., "1.30")
+eks_kubernetes_version = "1.30"
+
+# REQUIRED | Data classification
+# Allowed values: public | internal | confidential | restricted
+eks_data_classification = "confidential"
+
+# REQUIRED | Cost centre code
+# ACTION REQUIRED: Replace with your cost centre
+eks_cost_centre = "CC-REPLACE-ME"
+
+# -----------------------------------------------------------------------------
+# MODULES — Atomic: rds-postgres
+# -----------------------------------------------------------------------------
+
+# REQUIRED | RDS instance identifier
+# ACTION REQUIRED: Replace with your database name (e.g., "payments-db-prod")
+rds_identifier = "REPLACE-ME-prod"
+
+# REQUIRED | PostgreSQL engine version
+# ACTION REQUIRED: Use latest AWS-supported version — check aws rds describe-db-engine-versions
+rds_engine_version = "15.4"
+
+# REQUIRED | RDS instance class
+# ACTION REQUIRED: Size based on your workload. db.t3.medium for dev, db.r6g.large+ for prod
+rds_instance_class = "db.r6g.large"
+
+# REQUIRED | Allocated storage in GB
+# ACTION REQUIRED: Set based on expected data volume with headroom
+rds_allocated_storage = 100
+
+# REQUIRED | Maximum storage for autoscaling in GB
+# ACTION REQUIRED: Set to 3-5x initial storage
+rds_max_allocated_storage = 500
+
+# REQUIRED | Database name
+# ACTION REQUIRED: Replace with your application's database name
+rds_database_name = "REPLACE_ME"
+
+# REQUIRED | Master username — do not use 'admin', 'root', or 'postgres'
+# ACTION REQUIRED: Replace with a non-obvious master username
+rds_master_username = "REPLACE_ME_dbadmin"
+
+# NOTE: master_password is NOT set here — it is managed by AWS Secrets Manager
+# See docs/architecture.md for the Secrets Manager rotation setup
+
+# REQUIRED | Subnet group — must be private subnets only
+# ACTION REQUIRED: Reference the private subnet IDs from your foundation outputs
+rds_subnet_ids = ["subnet-REPLACE-ME-1", "subnet-REPLACE-ME-2", "subnet-REPLACE-ME-3"]
+
+# REQUIRED | Data classification
+# Allowed values: public | internal | confidential | restricted
+rds_data_classification = "confidential"
+
+# REQUIRED | Cost centre code
+# ACTION REQUIRED: Replace with your cost centre
+rds_cost_centre = "CC-REPLACE-ME"
+
+# OPTIONAL | Enable multi-AZ (ALWAYS true in production, may disable for dev to reduce cost)
+rds_multi_az = true
+
+# OPTIONAL | Backup retention period in days (minimum 7 for SOC 2 / HIPAA)
+rds_backup_retention_days = 30
+
+# -----------------------------------------------------------------------------
+# TEAMS — Compute Squad
+# -----------------------------------------------------------------------------
+
+# REQUIRED | Compute Squad AWS account ID (if using separate accounts per team)
+# ACTION REQUIRED: Replace with compute squad's account ID
+compute_squad_account_id = "REPLACE-ME-ACCOUNT-ID"
+
+# REQUIRED | Cost centre for compute squad resources
+# ACTION REQUIRED: Replace with compute squad's cost centre
+compute_squad_cost_centre = "CC-REPLACE-ME"
+
+# -----------------------------------------------------------------------------
+# TEAMS — Data Squad
+# -----------------------------------------------------------------------------
+
+# REQUIRED | Data Squad AWS account ID
+# ACTION REQUIRED: Replace with data squad's account ID
+data_squad_account_id = "REPLACE-ME-ACCOUNT-ID"
+
+# REQUIRED | Cost centre for data squad resources
+# ACTION REQUIRED: Replace with data squad's cost centre
+data_squad_cost_centre = "CC-REPLACE-ME"
+
+# -----------------------------------------------------------------------------
+# COMPLIANCE & TAGGING
+# -----------------------------------------------------------------------------
+
+# REQUIRED | Environment name — controls log retention and encryption tier
+# Allowed values: prod | staging | dev
+environment = "prod"
+
+# REQUIRED | Compliance frameworks in scope — used for audit tag generation
+# ACTION REQUIRED: Remove frameworks not applicable to your organisation
+compliance_scope = "soc2-hipaa"
